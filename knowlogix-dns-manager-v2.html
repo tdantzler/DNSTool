@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowlogix DNS Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --kx-bg: #0c0e11;
+      --kx-surface: #13161b;
+      --kx-surface-raised: #1a1e25;
+      --kx-surface-hover: #222730;
+      --kx-border: #2a2f3a;
+      --kx-border-focus: #f97316;
+      --kx-text: #e2e4e9;
+      --kx-text-dim: #7a8194;
+      --kx-text-muted: #4a5168;
+      --kx-accent: #f97316;
+      --kx-accent-dim: rgba(249,115,22,0.15);
+      --kx-accent-glow: rgba(249,115,22,0.3);
+      --kx-success: #22c55e;
+      --kx-success-dim: rgba(34,197,94,0.12);
+      --kx-error: #ef4444;
+      --kx-error-dim: rgba(239,68,68,0.12);
+      --kx-warn: #eab308;
+      --kx-warn-dim: rgba(234,179,8,0.12);
+      --kx-blue: #3b82f6;
+      --kx-blue-dim: rgba(59,130,246,0.12);
+      --kx-mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --kx-sans: 'Outfit', system-ui, sans-serif;
+      --kx-radius: 8px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { height: 100%; }
+    body {
+      font-family: var(--kx-sans);
+      background: var(--kx-bg);
+      color: var(--kx-text);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 80%, rgba(249,115,22,0.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(249,115,22,0.03) 0%, transparent 50%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── LAYOUT ── */
+    .app-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      background: var(--kx-surface); border-bottom: 1px solid var(--kx-border);
+      padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-logo {
+      width: 32px; height: 32px; background: var(--kx-accent); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--kx-mono); font-weight: 700; font-size: 0.75rem; color: var(--kx-bg);
+    }
+    .topbar-title { font-weight: 700; font-size: 0.95rem; }
+    .topbar-title span { color: var(--kx-text-dim); font-weight: 400; margin-left: 0.5rem; font-size: 0.8rem; }
+    .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-user { font-family: var(--kx-mono); font-size: 0.75rem; color: var(--kx-text-dim); }
+    .btn-small {
+      background: none; border: 1px solid var(--kx-border); color: var(--kx-text-dim);
+      padding: 0.35rem 0.75rem; border-radius: 6px; font-family: var(--kx-mono); font-size: 0.7rem;
+      cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .btn-small:hover { border-color: var(--kx-accent); color: var(--kx-accent); }
+    .btn-small.danger:hover { border-color: var(--kx-error); color: var(--kx-error); }
+    .main-content { flex: 1; max-width: 860px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── AUTH ── */
+    .auth-wrapper {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 2rem; position: relative; z-index: 1;
+    }
+    .auth-card {
+      width: 100%; max-width: 400px; background: var(--kx-surface);
+      border: 1px solid var(--kx-border); border-radius: 12px; padding: 2.5rem 2rem;
+    }
+    .auth-logo { text-align: center; margin-bottom: 2rem; }
+    .auth-logo .logo-mark {
+      width: 56px; height: 56px; background: var(--kx-accent); border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--kx-mono); font-weight: 700; font-size: 1.1rem; color: var(--kx-bg); margin-bottom: 1rem;
+    }
+    .auth-logo h1 { font-size: 1.35rem; font-weight: 700; }
+    .auth-logo p { color: var(--kx-text-dim); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    .form-field { margin-bottom: 1.25rem; }
+    .form-field label {
+      display: block; font-family: var(--kx-mono); font-size: 0.7rem; font-weight: 600;
+      color: var(--kx-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.4rem;
+    }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%; padding: 0.7rem 0.85rem; background: var(--kx-bg); border: 1px solid var(--kx-border);
+      border-radius: var(--kx-radius); color: var(--kx-text); font-family: var(--kx-mono); font-size: 0.9rem;
+      transition: border-color 0.15s;
+    }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+      outline: none; border-color: var(--kx-accent); box-shadow: 0 0 0 3px var(--kx-accent-dim);
+    }
+    .form-field input::placeholder { color: var(--kx-text-muted); }
+    .form-field select { cursor: pointer; }
+
+    .btn-primary {
+      display: block; width: 100%; padding: 0.75rem; background: var(--kx-accent); color: var(--kx-bg);
+      border: none; border-radius: var(--kx-radius); font-family: var(--kx-sans); font-size: 0.95rem;
+      font-weight: 700; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+
+    .auth-error {
+      background: var(--kx-error-dim); border: 1px solid rgba(239,68,68,0.25); color: var(--kx-error);
+      padding: 0.6rem 0.85rem; border-radius: var(--kx-radius); font-size: 0.82rem; margin-bottom: 1rem;
+      display: none; font-family: var(--kx-mono);
+    }
+    .auth-error.visible { display: block; }
+    .auth-success {
+      background: var(--kx-success-dim); border: 1px solid rgba(34,197,94,0.25); color: var(--kx-success);
+      padding: 0.6rem 0.85rem; border-radius: var(--kx-radius); font-size: 0.82rem; margin-bottom: 1rem;
+      display: none; font-family: var(--kx-mono);
+    }
+    .auth-success.visible { display: block; }
+    .auth-link {
+      text-align: center; margin-top: 1rem; font-size: 0.82rem;
+    }
+    .auth-link a {
+      color: var(--kx-accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+    }
+
+    /* ── TOTP ── */
+    .totp-setup-info {
+      background: var(--kx-accent-dim); border: 1px solid rgba(249,115,22,0.2); border-radius: var(--kx-radius);
+      padding: 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--kx-text); line-height: 1.6;
+    }
+    .totp-setup-info code {
+      display: block; background: var(--kx-bg); padding: 0.6rem; margin: 0.75rem 0; border-radius: 6px;
+      font-family: var(--kx-mono); font-size: 0.95rem; color: var(--kx-accent);
+      letter-spacing: 0.15em; text-align: center; word-break: break-all; user-select: all; cursor: pointer;
+    }
+    .totp-setup-info .step { margin-bottom: 0.5rem; }
+    .totp-setup-info .step strong { color: var(--kx-accent); }
+    .totp-input-row { display: flex; gap: 0.5rem; justify-content: center; margin: 1.5rem 0; }
+    .totp-digit {
+      width: 48px; height: 56px; text-align: center; font-family: var(--kx-mono); font-size: 1.5rem; font-weight: 700;
+      background: var(--kx-bg); border: 2px solid var(--kx-border); border-radius: var(--kx-radius); color: var(--kx-text);
+      transition: border-color 0.15s;
+    }
+    .totp-digit:focus { outline: none; border-color: var(--kx-accent); box-shadow: 0 0 0 3px var(--kx-accent-dim); }
+
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--kx-border);
+    }
+    .tab-btn {
+      padding: 0.6rem 1.25rem; background: none; border: none; color: var(--kx-text-dim);
+      font-family: var(--kx-sans); font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+    }
+    .tab-btn:hover { color: var(--kx-text); }
+    .tab-btn.active { color: var(--kx-accent); border-bottom-color: var(--kx-accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--kx-surface); border: 1px solid var(--kx-border);
+      border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem;
+    }
+    .card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+    .card h3 .badge {
+      font-family: var(--kx-mono); font-size: 0.65rem; font-weight: 700;
+      padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; vertical-align: middle;
+    }
+    .badge-a { background: var(--kx-accent-dim); color: var(--kx-accent); }
+    .badge-cname { background: var(--kx-blue-dim); color: var(--kx-blue); }
+    .badge-txt { background: var(--kx-success-dim); color: var(--kx-success); }
+    .badge-mx { background: var(--kx-warn-dim); color: var(--kx-warn); }
+
+    /* ── PROJECT NAME / SUBDOMAIN INPUT ── */
+    .project-input-row { display: flex; align-items: stretch; gap: 0; margin-bottom: 1.25rem; }
+    .project-input-row input {
+      flex: 1; padding: 0.75rem 1rem; background: var(--kx-bg); border: 2px solid var(--kx-border);
+      border-right: none; border-radius: var(--kx-radius) 0 0 var(--kx-radius);
+      color: var(--kx-text); font-family: var(--kx-mono); font-size: 1rem; font-weight: 500;
+    }
+    .project-input-row input:focus {
+      outline: none; border-color: var(--kx-accent); box-shadow: 0 0 0 3px var(--kx-accent-dim);
+      position: relative; z-index: 1;
+    }
+    .project-input-row input::placeholder { color: var(--kx-text-muted); }
+    .project-suffix {
+      padding: 0.75rem 1rem; background: var(--kx-surface-raised); border: 2px solid var(--kx-border);
+      border-left: none; border-radius: 0 var(--kx-radius) var(--kx-radius) 0;
+      font-family: var(--kx-mono); font-size: 0.9rem; color: var(--kx-text-dim);
+      white-space: nowrap; display: flex; align-items: center;
+    }
+
+    /* ── RECORDS BUILDER ── */
+    .records-builder { margin-bottom: 1rem; }
+    .record-entry {
+      display: grid; grid-template-columns: 110px 1fr 1fr auto;
+      gap: 0.5rem; align-items: start; margin-bottom: 0.5rem;
+      padding: 0.75rem; background: var(--kx-bg); border: 1px solid var(--kx-border); border-radius: 6px;
+    }
+    .record-entry select, .record-entry input {
+      padding: 0.55rem 0.65rem; background: var(--kx-surface); border: 1px solid var(--kx-border);
+      border-radius: 4px; color: var(--kx-text); font-family: var(--kx-mono); font-size: 0.82rem;
+      transition: border-color 0.15s; width: 100%;
+    }
+    .record-entry select:focus, .record-entry input:focus {
+      outline: none; border-color: var(--kx-accent);
+    }
+    .record-entry input::placeholder { color: var(--kx-text-muted); }
+    .btn-remove-record {
+      background: none; border: none; color: var(--kx-text-muted); font-size: 1.1rem;
+      cursor: pointer; padding: 0.5rem; transition: color 0.15s;
+    }
+    .btn-remove-record:hover { color: var(--kx-error); }
+
+    .btn-add-record {
+      background: none; border: 1px dashed var(--kx-border); color: var(--kx-text-dim);
+      padding: 0.5rem; border-radius: 6px; width: 100%; cursor: pointer;
+      font-family: var(--kx-mono); font-size: 0.78rem; transition: all 0.15s;
+    }
+    .btn-add-record:hover { border-color: var(--kx-accent); color: var(--kx-accent); }
+
+    .record-labels {
+      display: grid; grid-template-columns: 110px 1fr 1fr auto;
+      gap: 0.5rem; padding: 0 0.75rem; margin-bottom: 0.35rem;
+      font-family: var(--kx-mono); font-size: 0.65rem; color: var(--kx-text-muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+
+    .btn-submit-project {
+      padding: 0.7rem 2rem; background: var(--kx-accent); color: var(--kx-bg); border: none;
+      border-radius: var(--kx-radius); font-family: var(--kx-sans); font-size: 0.95rem;
+      font-weight: 700; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem;
+    }
+    .btn-submit-project:hover { filter: brightness(1.1); }
+    .btn-submit-project:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── ACTIVE PROJECTS TABLE ── */
+    .projects-list { }
+    .project-group {
+      background: var(--kx-surface); border: 1px solid var(--kx-border);
+      border-radius: 10px; margin-bottom: 1rem; overflow: hidden;
+    }
+    .project-header {
+      padding: 0.85rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--kx-border);
+    }
+    .project-header:hover { background: var(--kx-surface-hover); }
+    .project-name {
+      font-family: var(--kx-mono); font-weight: 600; color: var(--kx-accent); font-size: 0.9rem;
+    }
+    .project-meta { font-size: 0.75rem; color: var(--kx-text-muted); font-family: var(--kx-mono); }
+    .project-actions { display: flex; gap: 0.5rem; }
+    .project-records { padding: 0; }
+    .project-records table { width: 100%; border-collapse: collapse; }
+    .project-records th {
+      font-family: var(--kx-mono); font-size: 0.63rem; font-weight: 600; color: var(--kx-text-muted);
+      text-transform: uppercase; letter-spacing: 0.1em; padding: 0.5rem 1rem; text-align: left;
+      background: var(--kx-surface-raised);
+    }
+    .project-records td {
+      padding: 0.55rem 1rem; font-size: 0.82rem;
+      border-bottom: 1px solid rgba(42,47,58,0.4); vertical-align: middle;
+    }
+    .project-records tr:last-child td { border-bottom: none; }
+    .record-type-badge {
+      display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px;
+      font-family: var(--kx-mono); font-size: 0.68rem; font-weight: 700;
+    }
+    .type-A { background: var(--kx-accent-dim); color: var(--kx-accent); }
+    .type-CNAME { background: var(--kx-blue-dim); color: var(--kx-blue); }
+    .type-TXT { background: var(--kx-success-dim); color: var(--kx-success); }
+    .type-MX { background: var(--kx-warn-dim); color: var(--kx-warn); }
+    .type-AAAA { background: rgba(168,85,247,0.12); color: #a855f7; }
+
+    /* ── AUDIT LOG ── */
+    .audit-entry {
+      padding: 0.65rem 1rem; border-bottom: 1px solid var(--kx-border);
+      font-size: 0.82rem; display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .audit-entry:last-child { border-bottom: none; }
+    .audit-time {
+      font-family: var(--kx-mono); font-size: 0.72rem; color: var(--kx-text-muted);
+      white-space: nowrap; min-width: 140px; flex-shrink: 0;
+    }
+    .audit-action {
+      display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px;
+      font-family: var(--kx-mono); font-size: 0.68rem; font-weight: 700;
+      margin-right: 0.5rem;
+    }
+    .action-create { background: var(--kx-success-dim); color: var(--kx-success); }
+    .action-delete { background: var(--kx-error-dim); color: var(--kx-error); }
+    .action-password { background: var(--kx-warn-dim); color: var(--kx-warn); }
+    .audit-detail { color: var(--kx-text-dim); }
+    .audit-project { color: var(--kx-accent); font-family: var(--kx-mono); font-weight: 600; }
+
+    .empty-state {
+      padding: 2.5rem 1rem; text-align: center; color: var(--kx-text-muted); font-size: 0.85rem;
+    }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed; top: 1rem; right: 1rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.75rem 1rem; border-radius: var(--kx-radius); font-family: var(--kx-mono); font-size: 0.8rem;
+      min-width: 280px; max-width: 420px; animation: toast-in 0.25s ease-out; border: 1px solid;
+    }
+    .toast.success { background: var(--kx-success-dim); border-color: rgba(34,197,94,0.25); color: var(--kx-success); }
+    .toast.error   { background: var(--kx-error-dim);   border-color: rgba(239,68,68,0.25); color: var(--kx-error); }
+    .toast.info    { background: var(--kx-accent-dim);  border-color: rgba(249,115,22,0.25); color: var(--kx-accent); }
+    @keyframes toast-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--kx-surface); border: 1px solid var(--kx-border);
+      border-radius: 12px; padding: 2rem; max-width: 460px; width: 100%;
+    }
+    .modal-box h3 { margin-bottom: 0.75rem; font-size: 1.05rem; }
+    .modal-box p { color: var(--kx-text-dim); font-size: 0.88rem; margin-bottom: 1.25rem; }
+    .modal-box .highlight { font-family: var(--kx-mono); color: var(--kx-error); font-weight: 600; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 0.55rem 1rem; background: none; border: 1px solid var(--kx-border); color: var(--kx-text-dim);
+      border-radius: var(--kx-radius); font-family: var(--kx-sans); font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-cancel:hover { border-color: var(--kx-text-dim); }
+    .btn-danger {
+      padding: 0.55rem 1rem; background: var(--kx-error); border: none; color: white;
+      border-radius: var(--kx-radius); font-family: var(--kx-sans); font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-danger:hover { filter: brightness(1.15); }
+
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .section-header h2 { font-size: 1.25rem; font-weight: 700; }
+    .section-header h2 .accent { color: var(--kx-accent); }
+    .domain-badge {
+      font-family: var(--kx-mono); font-size: 0.75rem; color: var(--kx-text-dim);
+      background: var(--kx-surface); border: 1px solid var(--kx-border);
+      padding: 0.3rem 0.65rem; border-radius: 50px;
+    }
+    .config-banner {
+      background: var(--kx-warn-dim); border: 1px solid rgba(234,179,8,0.2); border-radius: var(--kx-radius);
+      padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--kx-warn);
+      font-family: var(--kx-mono); display: none;
+    }
+    .config-banner.visible { display: block; }
+
+    .hint {
+      font-size: 0.72rem; color: var(--kx-text-muted); margin-top: 0.3rem; font-family: var(--kx-mono);
+    }
+
+    /* ── SETTINGS CARD ── */
+    .settings-section { margin-bottom: 2rem; }
+    .settings-section h3 {
+      font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--kx-border);
+    }
+
+    @media (max-width: 700px) {
+      .record-entry { grid-template-columns: 1fr; }
+      .record-labels { display: none; }
+      .topbar-title span { display: none; }
+      .audit-time { min-width: 90px; font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen active" id="screen-login">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-mark">KX</div>
+        <h1>DNS Manager</h1>
+        <p>Knowlogix Subdomain Control</p>
+      </div>
+      <div class="auth-error" id="login-error"></div>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-field">
+          <label>Username</label>
+          <input type="text" id="login-user" autocomplete="username" placeholder="admin" required>
+        </div>
+        <div class="form-field">
+          <label>Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-primary">Sign In</button>
+      </form>
+      <div class="auth-link">
+        <a onclick="showScreen('screen-reset-request')">Forgot password?</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PASSWORD RESET REQUEST ═══ -->
+<div class="screen" id="screen-reset-request">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-mark">🔑</div>
+        <h1>Reset Password</h1>
+        <p>A reset link will be sent to the admin email</p>
+      </div>
+      <div class="auth-error" id="reset-error"></div>
+      <div class="auth-success" id="reset-success"></div>
+      <form onsubmit="handleResetRequest(event)">
+        <div class="form-field">
+          <label>Username</label>
+          <input type="text" id="reset-user" placeholder="admin" required>
+        </div>
+        <button type="submit" class="btn-primary" id="btn-reset-request">Send Reset Request</button>
+      </form>
+      <div class="auth-link">
+        <a onclick="showScreen('screen-login')">← Back to login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOTP SETUP ═══ -->
+<div class="screen" id="screen-totp-setup">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-mark">2FA</div>
+        <h1>Set Up 2FA</h1>
+        <p>Scan with your authenticator app</p>
+      </div>
+      <div class="totp-setup-info">
+        <div class="step"><strong>1.</strong> Open Google Authenticator, Authy, or 1Password</div>
+        <div class="step"><strong>2.</strong> Tap "+" → "Enter setup key"</div>
+        <div class="step"><strong>3.</strong> Enter this secret:</div>
+        <code id="totp-secret-display">Loading...</code>
+        <div class="step"><strong>4.</strong> Enter the 6-digit code below to confirm</div>
+      </div>
+      <div class="auth-error" id="setup-error"></div>
+      <div class="totp-input-row" id="setup-totp-digits">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+      </div>
+      <button class="btn-primary" onclick="handleTotpSetup()">Verify &amp; Enable 2FA</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOTP VERIFY ═══ -->
+<div class="screen" id="screen-totp-verify">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-mark">2FA</div>
+        <h1>Two-Factor Auth</h1>
+        <p>Enter the 6-digit code from your authenticator</p>
+      </div>
+      <div class="auth-error" id="verify-error"></div>
+      <div class="totp-input-row" id="verify-totp-digits">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+        <input type="text" class="totp-digit" maxlength="1" inputmode="numeric">
+      </div>
+      <button class="btn-primary" onclick="handleTotpVerify()">Verify</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div class="screen" id="screen-app">
+  <div class="app-shell">
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="topbar-logo">KX</div>
+        <div class="topbar-title">DNS Manager <span>knowlogix.com</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-user" id="topbar-user">admin</span>
+        <button class="btn-small" onclick="switchTab('settings')">⚙ Settings</button>
+        <button class="btn-small danger" onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="config-banner" id="config-banner">
+        ⚠ N8N webhooks not configured. Update the N8N_WEBHOOKS object in the CONFIG section of this file.
+      </div>
+
+      <div class="section-header">
+        <h2>Subdomain <span class="accent">Control</span></h2>
+        <span class="domain-badge">*.knowlogix.com</span>
+      </div>
+
+      <!-- TABS -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('create')">+ New Project</button>
+        <button class="tab-btn" onclick="switchTab('projects')">Active Projects</button>
+        <button class="tab-btn" onclick="switchTab('audit')">Audit Log</button>
+        <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+      </div>
+
+      <!-- TAB: CREATE -->
+      <div class="tab-panel active" id="tab-create">
+        <div class="card">
+          <h3>New Subdomain Project</h3>
+          <p style="font-size:0.85rem;color:var(--kx-text-dim);margin-bottom:1.25rem;">
+            Enter the subdomain name (this becomes the project identifier) and add all DNS records needed.
+            For GHL, you'll typically need a CNAME or A record — paste the values GHL gives you.
+          </p>
+
+          <label style="font-family:var(--kx-mono);font-size:0.7rem;font-weight:600;color:var(--kx-text-dim);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:0.4rem;">Project / Subdomain Name</label>
+          <div class="project-input-row">
+            <input type="text" id="project-name" placeholder="sce-demo" autocomplete="off">
+            <div class="project-suffix">.knowlogix.com</div>
+          </div>
+          <div class="hint" style="margin-top:-0.75rem;margin-bottom:1.25rem;">This is both the subdomain and the project name for grouping records.</div>
+
+          <label style="font-family:var(--kx-mono);font-size:0.7rem;font-weight:600;color:var(--kx-text-dim);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:0.6rem;">DNS Records</label>
+          <div class="record-labels"><span>Type</span><span>Host</span><span>Value / Target</span><span></span></div>
+          <div class="records-builder" id="records-builder"></div>
+          <button class="btn-add-record" onclick="addRecordRow()">+ Add Another Record</button>
+
+          <div style="margin-top:1.5rem;">
+            <button class="btn-submit-project" id="btn-submit-project" onclick="handleCreateProject()">
+              Create Project &amp; Deploy Records
+            </button>
+          </div>
+        </div>
+
+        <div class="card" style="border-color: rgba(59,130,246,0.3);">
+          <h3>Quick Reference: GHL DNS Setup <span class="badge badge-cname">CNAME</span> <span class="badge badge-a">A</span></h3>
+          <div style="font-size:0.85rem;color:var(--kx-text-dim);line-height:1.8;">
+            <p>When connecting a <strong>subdomain</strong> to GHL (funnels, sites, landing pages):</p>
+            <p style="margin:0.5rem 0;font-family:var(--kx-mono);font-size:0.82rem;">
+              <span style="color:var(--kx-blue);">CNAME</span> &nbsp;→&nbsp; host: <strong>sce-demo</strong> &nbsp;→&nbsp; value: <strong>sites.ludicrous.cloud</strong> <em style="color:var(--kx-text-muted);">(or whatever GHL shows)</em>
+            </p>
+            <p style="margin:0.5rem 0;font-family:var(--kx-mono);font-size:0.82rem;">
+              <span style="color:var(--kx-accent);">A</span> &nbsp;→&nbsp; host: <strong>sce-demo</strong> &nbsp;→&nbsp; value: <strong>34.120.54.74</strong> <em style="color:var(--kx-text-muted);">(typical GHL IP)</em>
+            </p>
+            <p style="margin-top:0.75rem;">GHL will show you the exact records needed in <strong>Settings → Domains</strong> after you add the domain. Copy those values here.</p>
+            <p style="margin-top:0.5rem;color:var(--kx-text-muted);">
+              <strong>Note:</strong> Name.com does NOT require cPanel or any hosting registration — DNS records alone are sufficient for subdomains pointed to external services like GHL.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: PROJECTS -->
+      <div class="tab-panel" id="tab-projects">
+        <div class="projects-list" id="projects-list">
+          <div class="empty-state">Loading projects...</div>
+        </div>
+      </div>
+
+      <!-- TAB: AUDIT LOG -->
+      <div class="tab-panel" id="tab-audit">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--kx-border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">Change History</h3>
+            <button class="btn-small" onclick="exportAuditLog()">↓ Export CSV</button>
+          </div>
+          <div id="audit-log-body">
+            <div class="empty-state">No changes recorded yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: SETTINGS -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="card">
+          <div class="settings-section">
+            <h3>Change Password</h3>
+            <div class="form-field">
+              <label>Current Password</label>
+              <input type="password" id="settings-current-pass" placeholder="••••••••">
+            </div>
+            <div class="form-field">
+              <label>New Password</label>
+              <input type="password" id="settings-new-pass" placeholder="••••••••">
+            </div>
+            <div class="form-field">
+              <label>Confirm New Password</label>
+              <input type="password" id="settings-confirm-pass" placeholder="••••••••">
+            </div>
+            <button class="btn-primary" style="width:auto;padding:0.6rem 1.5rem;" onclick="handleChangePassword()">Update Password</button>
+          </div>
+
+          <div class="settings-section">
+            <h3>Reset 2FA</h3>
+            <p style="font-size:0.85rem;color:var(--kx-text-dim);margin-bottom:1rem;">
+              This will clear your TOTP secret and require you to set up 2FA again on next login.
+            </p>
+            <button class="btn-small danger" onclick="handleReset2FA()">Reset 2FA</button>
+          </div>
+
+          <div class="settings-section">
+            <h3>Change Username</h3>
+            <div class="form-field">
+              <label>New Username</label>
+              <input type="text" id="settings-new-user" placeholder="admin">
+            </div>
+            <button class="btn-primary" style="width:auto;padding:0.6rem 1.5rem;" onclick="handleChangeUsername()">Update Username</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELETE MODAL ═══ -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-box">
+    <h3>Delete Project?</h3>
+    <p>This will remove <strong>all DNS records</strong> for <span class="highlight" id="delete-target"></span> and they will stop resolving after DNS propagation.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-danger" id="btn-confirm-delete" onclick="confirmDeleteProject()">Delete All Records</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURATION — UPDATE THESE BEFORE DEPLOYING
+// ══════════════════════════════════════════════════════════════════
+const CONFIG = {
+  BASE_DOMAIN: 'knowlogix.com',
+
+  // N8N WEBHOOK URLS — create these workflows in n8n
+  // Each receives JSON and calls Name.com API with stored credentials
+  N8N_WEBHOOKS: {
+    create:        'https://n8n.srv1047408.hstgr.cloud/webhook/dns-create',
+    delete:        'https://n8n.srv1047408.hstgr.cloud/webhook/dns-delete',
+    list:          'https://n8n.srv1047408.hstgr.cloud/webhook/dns-list',
+    resetPassword: 'https://n8n.srv1047408.hstgr.cloud/webhook/dns-password-reset',
+  },
+
+  // Default password hash: "Knowlogix2026!"
+  // To generate a new hash, run in browser console:
+  //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('NewPassword'))
+  //     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+  AUTH: {
+    username: 'admin',
+    passwordHash: '9f17c45fe564776aa042cf0684c874f37e988e1dd0306e0a389ced893b7d4920',
+  },
+
+  SESSION_TIMEOUT: 30 * 60 * 1000,
+};
+
+// ══════════════════════════════════════════════════════════════════
+// TOTP (RFC 6238)
+// ══════════════════════════════════════════════════════════════════
+const TOTP = {
+  generateSecret() {
+    const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const b = crypto.getRandomValues(new Uint8Array(20));
+    return Array.from(b, v => c[v % 32]).join('');
+  },
+  base32Decode(s) {
+    const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = ''; for (const ch of s.toUpperCase()) { const v = c.indexOf(ch); if (v >= 0) bits += v.toString(2).padStart(5, '0'); }
+    const bytes = new Uint8Array(Math.floor(bits.length / 8));
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(bits.substr(i * 8, 8), 2);
+    return bytes;
+  },
+  async hmacSha1(key, data) {
+    const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+    return new Uint8Array(await crypto.subtle.sign('HMAC', k, data));
+  },
+  async codeAt(secret, time) {
+    const kb = this.base32Decode(secret);
+    const tb = new Uint8Array(8); let t = time;
+    for (let i = 7; i >= 0; i--) { tb[i] = t & 0xff; t = Math.floor(t / 256); }
+    const h = await this.hmacSha1(kb, tb);
+    const o = h[h.length - 1] & 0x0f;
+    return (((h[o]&0x7f)<<24)|((h[o+1]&0xff)<<16)|((h[o+2]&0xff)<<8)|(h[o+3]&0xff)) % 1000000;
+  },
+  async verify(secret, input) {
+    const now = Math.floor(Date.now() / 1000 / 30);
+    for (let d = -1; d <= 1; d++) {
+      const code = await this.codeAt(secret, now + d);
+      if (code.toString().padStart(6, '0') === input) return true;
+    }
+    return false;
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+let state = { authenticated: false };
+
+// Persistent local storage keys
+const STORE = {
+  auth: 'kx_auth',         // { username, passwordHash }
+  totp: 'kx_totp_secret',
+  projects: 'kx_projects', // [{ name, createdAt, records: [{id, type, host, answer}] }]
+  audit: 'kx_audit',       // [{ time, action, project, detail, user }]
+};
+
+function loadAuth() {
+  const saved = localStorage.getItem(STORE.auth);
+  if (saved) { try { Object.assign(CONFIG.AUTH, JSON.parse(saved)); } catch(e){} }
+}
+function saveAuth() {
+  localStorage.setItem(STORE.auth, JSON.stringify(CONFIG.AUTH));
+}
+function loadProjects() {
+  try { return JSON.parse(localStorage.getItem(STORE.projects)) || []; } catch(e) { return []; }
+}
+function saveProjects(p) { localStorage.setItem(STORE.projects, JSON.stringify(p)); }
+function loadAudit() {
+  try { return JSON.parse(localStorage.getItem(STORE.audit)) || []; } catch(e) { return []; }
+}
+function saveAudit(a) { localStorage.setItem(STORE.audit, JSON.stringify(a)); }
+function addAuditEntry(action, project, detail) {
+  const log = loadAudit();
+  log.unshift({ time: new Date().toISOString(), action, project, detail, user: CONFIG.AUTH.username });
+  saveAudit(log);
+}
+
+loadAuth();
+
+// ══════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const inp = document.getElementById(id).querySelector('input');
+  if (inp) setTimeout(() => inp.focus(), 100);
+}
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  if (panel) {
+    panel.classList.add('active');
+    // find matching tab button
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      if (b.textContent.toLowerCase().includes(name) || b.onclick?.toString().includes(name))
+        b.classList.add('active');
+    });
+  }
+  if (name === 'projects') renderProjects();
+  if (name === 'audit') renderAuditLog();
+}
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.textContent = msg; c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+async function hashPassword(p) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AUTH FLOW
+// ══════════════════════════════════════════════════════════════════
+async function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-error');
+  if (user !== CONFIG.AUTH.username) { err.textContent = 'Invalid credentials'; err.classList.add('visible'); return; }
+  const hash = await hashPassword(pass);
+  if (hash !== CONFIG.AUTH.passwordHash) { err.textContent = 'Invalid credentials'; err.classList.add('visible'); return; }
+  err.classList.remove('visible');
+  const totp = localStorage.getItem(STORE.totp);
+  if (!totp) {
+    window._pendingTotp = TOTP.generateSecret();
+    document.getElementById('totp-secret-display').textContent = window._pendingTotp;
+    showScreen('screen-totp-setup');
+  } else {
+    showScreen('screen-totp-verify');
+  }
+}
+
+async function handleTotpSetup() {
+  const code = getTotpInput('setup-totp-digits');
+  const err = document.getElementById('setup-error');
+  if (code.length !== 6) { err.textContent = 'Enter all 6 digits'; err.classList.add('visible'); return; }
+  const valid = await TOTP.verify(window._pendingTotp, code);
+  if (!valid) { err.textContent = 'Invalid code. Check your authenticator.'; err.classList.add('visible'); clearTotpInput('setup-totp-digits'); return; }
+  localStorage.setItem(STORE.totp, window._pendingTotp);
+  delete window._pendingTotp;
+  err.classList.remove('visible');
+  completeLogin();
+}
+
+async function handleTotpVerify() {
+  const code = getTotpInput('verify-totp-digits');
+  const err = document.getElementById('verify-error');
+  if (code.length !== 6) { err.textContent = 'Enter all 6 digits'; err.classList.add('visible'); return; }
+  const valid = await TOTP.verify(localStorage.getItem(STORE.totp), code);
+  if (!valid) { err.textContent = 'Invalid code.'; err.classList.add('visible'); clearTotpInput('verify-totp-digits'); return; }
+  err.classList.remove('visible');
+  completeLogin();
+}
+
+function completeLogin() {
+  state.authenticated = true;
+  document.getElementById('topbar-user').textContent = CONFIG.AUTH.username;
+  const ok = CONFIG.N8N_WEBHOOKS.create && CONFIG.N8N_WEBHOOKS.list;
+  if (!ok) document.getElementById('config-banner').classList.add('visible');
+  showScreen('screen-app');
+  showToast('Authenticated', 'success');
+  addRecordRow(); // seed one empty record row
+  setTimeout(() => { if (state.authenticated) { state.authenticated = false; showScreen('screen-login'); showToast('Session expired', 'info'); } }, CONFIG.SESSION_TIMEOUT);
+}
+
+function handleLogout() {
+  state.authenticated = false;
+  document.getElementById('login-pass').value = '';
+  clearTotpInput('verify-totp-digits');
+  showScreen('screen-login');
+}
+
+// Password reset → n8n
+async function handleResetRequest(e) {
+  e.preventDefault();
+  const user = document.getElementById('reset-user').value.trim();
+  const err = document.getElementById('reset-error');
+  const ok = document.getElementById('reset-success');
+  err.classList.remove('visible'); ok.classList.remove('visible');
+  if (!CONFIG.N8N_WEBHOOKS.resetPassword) { err.textContent = 'Reset webhook not configured'; err.classList.add('visible'); return; }
+  const token = crypto.getRandomValues(new Uint8Array(32));
+  const tokenHex = [...token].map(x => x.toString(16).padStart(2, '0')).join('');
+  try {
+    const res = await fetch(CONFIG.N8N_WEBHOOKS.resetPassword, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, requestedAt: new Date().toISOString(), resetToken: tokenHex })
+    });
+    if (!res.ok) throw new Error('Request failed');
+    ok.textContent = 'Reset request sent. Check the admin email inbox.';
+    ok.classList.add('visible');
+    addAuditEntry('password', 'system', `Password reset requested for "${user}"`);
+  } catch (e) {
+    err.textContent = 'Failed to send reset request: ' + e.message;
+    err.classList.add('visible');
+  }
+}
+
+// Settings: change password
+async function handleChangePassword() {
+  const curr = document.getElementById('settings-current-pass').value;
+  const newP = document.getElementById('settings-new-pass').value;
+  const conf = document.getElementById('settings-confirm-pass').value;
+  if (!curr || !newP) { showToast('Fill in all password fields', 'error'); return; }
+  const currHash = await hashPassword(curr);
+  if (currHash !== CONFIG.AUTH.passwordHash) { showToast('Current password is incorrect', 'error'); return; }
+  if (newP !== conf) { showToast('New passwords do not match', 'error'); return; }
+  if (newP.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
+  CONFIG.AUTH.passwordHash = await hashPassword(newP);
+  saveAuth();
+  addAuditEntry('password', 'system', 'Password changed');
+  showToast('Password updated', 'success');
+  document.getElementById('settings-current-pass').value = '';
+  document.getElementById('settings-new-pass').value = '';
+  document.getElementById('settings-confirm-pass').value = '';
+}
+
+function handleChangeUsername() {
+  const newUser = document.getElementById('settings-new-user').value.trim();
+  if (!newUser) { showToast('Enter a username', 'error'); return; }
+  const old = CONFIG.AUTH.username;
+  CONFIG.AUTH.username = newUser;
+  saveAuth();
+  document.getElementById('topbar-user').textContent = newUser;
+  addAuditEntry('password', 'system', `Username changed: ${old} → ${newUser}`);
+  showToast('Username updated', 'success');
+  document.getElementById('settings-new-user').value = '';
+}
+
+function handleReset2FA() {
+  if (!confirm('This will clear your 2FA. You\'ll set it up again on next login. Continue?')) return;
+  localStorage.removeItem(STORE.totp);
+  addAuditEntry('password', 'system', '2FA reset');
+  showToast('2FA cleared. Set up again on next login.', 'info');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TOTP INPUT WIRING
+// ══════════════════════════════════════════════════════════════════
+function getTotpInput(id) { return [...document.querySelectorAll(`#${id} .totp-digit`)].map(d => d.value).join(''); }
+function clearTotpInput(id) { const ds = document.querySelectorAll(`#${id} .totp-digit`); ds.forEach(d => d.value = ''); ds[0]?.focus(); }
+document.querySelectorAll('.totp-input-row').forEach(row => {
+  const ds = row.querySelectorAll('.totp-digit');
+  ds.forEach((inp, i) => {
+    inp.addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g,'').slice(-1); if (e.target.value && i < ds.length - 1) ds[i+1].focus(); });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !e.target.value && i > 0) { ds[i-1].focus(); ds[i-1].value = ''; }
+      if (e.key === 'Enter') e.target.closest('.auth-card')?.querySelector('.btn-primary')?.click();
+    });
+    inp.addEventListener('paste', e => {
+      e.preventDefault();
+      const p = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      p.split('').forEach((c, j) => { if (ds[j]) ds[j].value = c; });
+      const next = [...ds].findIndex(d => !d.value);
+      (next >= 0 ? ds[next] : ds[ds.length - 1]).focus();
+    });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// RECORD BUILDER
+// ══════════════════════════════════════════════════════════════════
+let recordCounter = 0;
+function addRecordRow(type = 'CNAME', host = '', answer = '') {
+  const id = ++recordCounter;
+  const builder = document.getElementById('records-builder');
+  const row = document.createElement('div');
+  row.className = 'record-entry'; row.id = `record-${id}`;
+  row.innerHTML = `
+    <select id="rec-type-${id}">
+      <option value="A" ${type==='A'?'selected':''}>A</option>
+      <option value="CNAME" ${type==='CNAME'?'selected':''}>CNAME</option>
+      <option value="TXT" ${type==='TXT'?'selected':''}>TXT</option>
+      <option value="MX" ${type==='MX'?'selected':''}>MX</option>
+      <option value="AAAA" ${type==='AAAA'?'selected':''}>AAAA</option>
+    </select>
+    <input type="text" id="rec-host-${id}" placeholder="subdomain" value="${escHtml(host)}">
+    <input type="text" id="rec-answer-${id}" placeholder="target IP or hostname" value="${escHtml(answer)}">
+    <button class="btn-remove-record" onclick="document.getElementById('record-${id}').remove()" title="Remove">✕</button>
+  `;
+  builder.appendChild(row);
+}
+
+function getRecordEntries() {
+  const rows = document.querySelectorAll('.record-entry');
+  const records = [];
+  rows.forEach(row => {
+    const id = row.id.replace('record-', '');
+    const type = document.getElementById(`rec-type-${id}`)?.value;
+    const host = document.getElementById(`rec-host-${id}`)?.value.trim();
+    const answer = document.getElementById(`rec-answer-${id}`)?.value.trim();
+    if (type && host && answer) records.push({ type, host, answer, ttl: 300 });
+  });
+  return records;
+}
+
+// Auto-fill host field when project name changes
+document.getElementById('project-name')?.addEventListener('input', e => {
+  const val = e.target.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
+  e.target.value = val;
+  // Update first record's host if it's empty or matches previous
+  const firstHost = document.querySelector('.record-entry input[id^="rec-host-"]');
+  if (firstHost && (!firstHost.value || firstHost.dataset.autoFilled === 'true')) {
+    firstHost.value = val;
+    firstHost.dataset.autoFilled = 'true';
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// N8N API CALLS
+// ══════════════════════════════════════════════════════════════════
+async function n8nCall(action, body = null) {
+  const url = CONFIG.N8N_WEBHOOKS[action];
+  if (!url) { showToast(`N8N webhook "${action}" not configured`, 'error'); return null; }
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : null });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) { showToast(`API error: ${e.message}`, 'error'); return null; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CREATE PROJECT
+// ══════════════════════════════════════════════════════════════════
+async function handleCreateProject() {
+  const projectName = document.getElementById('project-name').value.trim().toLowerCase();
+  if (!projectName) { showToast('Enter a project/subdomain name', 'error'); return; }
+  if (!/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?$/.test(projectName)) { showToast('Invalid subdomain format', 'error'); return; }
+
+  const records = getRecordEntries();
+  if (records.length === 0) { showToast('Add at least one DNS record', 'error'); return; }
+
+  // Check if project already exists locally
+  const existing = loadProjects();
+  if (existing.find(p => p.name === projectName)) { showToast(`Project "${projectName}" already exists`, 'error'); return; }
+
+  const btn = document.getElementById('btn-submit-project');
+  btn.disabled = true; btn.textContent = 'Deploying...';
+
+  const result = await n8nCall('create', {
+    project: projectName,
+    domain: CONFIG.BASE_DOMAIN,
+    records: records,
+  });
+
+  btn.disabled = false; btn.textContent = 'Create Project & Deploy Records';
+
+  if (result && result.success !== false) {
+    // Save project locally with record IDs from response
+    const created = result.created || records.map((r, i) => ({ ...r, id: result.recordIds?.[i] || `pending-${Date.now()}-${i}` }));
+    existing.push({
+      name: projectName,
+      createdAt: new Date().toISOString(),
+      records: created,
+    });
+    saveProjects(existing);
+
+    // Audit log
+    records.forEach(r => {
+      addAuditEntry('create', projectName, `${r.type} ${r.host}.${CONFIG.BASE_DOMAIN} → ${r.answer}`);
+    });
+
+    showToast(`Project "${projectName}" deployed with ${records.length} record(s)`, 'success');
+    document.getElementById('project-name').value = '';
+    document.getElementById('records-builder').innerHTML = '';
+    addRecordRow();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER PROJECTS
+// ══════════════════════════════════════════════════════════════════
+function renderProjects() {
+  const container = document.getElementById('projects-list');
+  const projects = loadProjects();
+  if (projects.length === 0) { container.innerHTML = '<div class="empty-state">No projects created yet. Switch to "New Project" to get started.</div>'; return; }
+
+  container.innerHTML = projects.map(p => `
+    <div class="project-group">
+      <div class="project-header">
+        <div>
+          <span class="project-name">${escHtml(p.name)}.${CONFIG.BASE_DOMAIN}</span>
+          <span class="project-meta">&nbsp;· ${p.records?.length || 0} records · ${new Date(p.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div class="project-actions">
+          <button class="btn-small danger" onclick="openDeleteProject('${escHtml(p.name)}')">Delete Project</button>
+        </div>
+      </div>
+      <div class="project-records">
+        <table>
+          <thead><tr><th>Type</th><th>Host</th><th>Target</th><th>TTL</th></tr></thead>
+          <tbody>
+            ${(p.records || []).map(r => `
+              <tr>
+                <td><span class="record-type-badge type-${r.type}">${r.type}</span></td>
+                <td style="font-family:var(--kx-mono);font-size:0.82rem;color:var(--kx-accent);">${escHtml(r.host)}.${CONFIG.BASE_DOMAIN}</td>
+                <td style="font-family:var(--kx-mono);font-size:0.78rem;color:var(--kx-text-dim);">${escHtml(r.answer)}</td>
+                <td style="font-family:var(--kx-mono);font-size:0.75rem;color:var(--kx-text-muted);">${r.ttl || 300}s</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── DELETE PROJECT ──
+let pendingDeleteProject = null;
+function openDeleteProject(name) {
+  pendingDeleteProject = name;
+  document.getElementById('delete-target').textContent = `${name}.${CONFIG.BASE_DOMAIN}`;
+  document.getElementById('delete-modal').classList.add('active');
+}
+
+async function confirmDeleteProject() {
+  if (!pendingDeleteProject) return;
+  const btn = document.getElementById('btn-confirm-delete');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+
+  const projects = loadProjects();
+  const project = projects.find(p => p.name === pendingDeleteProject);
+  const recordIds = project?.records?.map(r => r.id).filter(Boolean) || [];
+
+  const result = await n8nCall('delete', {
+    project: pendingDeleteProject,
+    domain: CONFIG.BASE_DOMAIN,
+    recordIds,
+  });
+
+  btn.disabled = false; btn.textContent = 'Delete All Records';
+  closeModal('delete-modal');
+
+  if (result && result.success !== false) {
+    // Audit
+    (project?.records || []).forEach(r => {
+      addAuditEntry('delete', pendingDeleteProject, `${r.type} ${r.host}.${CONFIG.BASE_DOMAIN} → ${r.answer}`);
+    });
+
+    // Remove from local
+    const updated = projects.filter(p => p.name !== pendingDeleteProject);
+    saveProjects(updated);
+    showToast(`Project "${pendingDeleteProject}" deleted`, 'success');
+    renderProjects();
+  }
+  pendingDeleteProject = null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER AUDIT LOG
+// ══════════════════════════════════════════════════════════════════
+function renderAuditLog() {
+  const container = document.getElementById('audit-log-body');
+  const log = loadAudit();
+  if (log.length === 0) { container.innerHTML = '<div class="empty-state">No changes recorded yet.</div>'; return; }
+
+  container.innerHTML = log.map(e => `
+    <div class="audit-entry">
+      <span class="audit-time">${new Date(e.time).toLocaleString()}</span>
+      <div>
+        <span class="audit-action action-${e.action}">${e.action.toUpperCase()}</span>
+        <span class="audit-project">${escHtml(e.project)}</span>
+        <span class="audit-detail">${escHtml(e.detail)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function exportAuditLog() {
+  const log = loadAudit();
+  if (log.length === 0) { showToast('No audit entries to export', 'info'); return; }
+  const csv = 'Timestamp,Action,Project,Detail,User\n' + log.map(e =>
+    `"${e.time}","${e.action}","${e.project}","${e.detail.replace(/"/g,'""')}","${e.user}"`
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `knowlogix-dns-audit-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
