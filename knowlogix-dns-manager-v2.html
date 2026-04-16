@@ -619,6 +619,9 @@
               <input type="password" id="settings-confirm-pass" placeholder="••••••••">
             </div>
             <button class="btn-primary" style="width:auto;padding:0.6rem 1.5rem;" onclick="handleChangePassword()">Update Password</button>
+            <p style="font-size:0.75rem;color:var(--kx-text-muted);margin-top:0.75rem;">
+              Forgot your current password? Click "Forgot password?" on the sign-in screen to reset via email.
+            </p>
           </div>
 
           <div class="settings-section">
@@ -758,6 +761,30 @@ function addAuditEntry(action, project, detail) {
 loadAuth();
 
 // ══════════════════════════════════════════════════════════════════
+// HANDLE PASSWORD RESET RETURN — auto-apply new hash from URL fragment
+// ══════════════════════════════════════════════════════════════════
+(function handleResetReturn() {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#newhash=')) return;
+
+  const params = new URLSearchParams(hash.substring(1));
+  const newHash = params.get('newhash');
+  const newUser = params.get('user');
+
+  if (newHash && newHash.length === 64 && /^[0-9a-f]+$/i.test(newHash)) {
+    CONFIG.AUTH.passwordHash = newHash;
+    if (newUser) CONFIG.AUTH.username = newUser;
+    saveAuth();
+    // Clear the URL fragment so the hash isn't visible in the address bar / history
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    // Show notice on next paint
+    setTimeout(() => {
+      if (typeof showToast === 'function') showToast('Password updated. Please sign in with your new password.', 'success');
+    }, 500);
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // UI HELPERS
 // ══════════════════════════════════════════════════════════════════
 function showScreen(id) {
@@ -881,7 +908,7 @@ async function handleResetRequest(e) {
   }
 }
 
-// Settings: change password
+// Settings: change password (local)
 async function handleChangePassword() {
   const curr = document.getElementById('settings-current-pass').value;
   const newP = document.getElementById('settings-new-pass').value;
